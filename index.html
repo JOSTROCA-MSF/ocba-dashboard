@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OCBA Tool Usability & Usage Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg-main: #f4f6f9;
+      --card-bg: #ffffff;
+      --text-primary: #1e293b;
+      --text-secondary: #64748b;
+      --border-color: #e2e8f0;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --neutral-light: #f1f5f9;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 24px;
+    }
+
+    header {
+      background: var(--card-bg);
+      padding: 20px 24px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      margin-bottom: 24px;
+      border: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    header h1 { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); }
+    header p { font-size: 0.875rem; color: var(--text-secondary); margin-top: 4px; }
+    .header-meta { text-align: right; font-size: 0.8125rem; color: var(--text-secondary); }
+    .header-meta span { font-weight: 600; color: var(--text-primary); }
+
+    .filter-panel {
+      background: var(--card-bg);
+      padding: 16px 24px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      margin-bottom: 24px;
+      border: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .filter-group { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .filter-label { font-size: 0.875rem; font-weight: 600; color: var(--text-primary); }
+    .month-checkboxes { display: flex; gap: 8px; flex-wrap: wrap; }
+    .month-btn {
+      background: var(--neutral-light);
+      border: 1px solid var(--border-color);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .month-btn.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    .btn-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn {
+      padding: 8px 16px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1px solid var(--border-color);
+      background: var(--card-bg);
+      transition: background 0.2s;
+    }
+    .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .btn-primary:hover { background: var(--primary-hover); }
+
+    .status-message {
+      margin-top: 10px;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .kpi-card {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      position: relative;
+    }
+
+    .kpi-title { font-size: 0.8125rem; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.5px; }
+    .kpi-value { font-size: 1.75rem; font-weight: 700; color: var(--text-primary); margin: 8px 0 4px 0; }
+    .kpi-subtext { font-size: 0.75rem; color: var(--text-secondary); }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 900px) {
+      .charts-grid { grid-template-columns: 1fr; }
+      .header-meta { text-align: left; }
+    }
+
+    .chart-card {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .chart-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 16px; color: var(--text-primary); }
+    .chart-container { position: relative; height: 260px; width: 100%; }
+
+    .section-card {
+      background: var(--card-bg);
+      padding: 24px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      margin-bottom: 24px;
+    }
+
+    .section-title { font-size: 1.125rem; font-weight: 700; margin-bottom: 16px; color: var(--text-primary); }
+
+    .findings-list { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+    .findings-list li {
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 0.9375rem;
+      border-left: 4px solid var(--primary);
+      background: var(--neutral-light);
+    }
+    .findings-list li.strength { border-left-color: var(--success); }
+    .findings-list li.warning { border-left-color: var(--warning); }
+
+    details { margin-top: 12px; font-size: 0.875rem; color: var(--text-secondary); }
+    summary { font-weight: 600; cursor: pointer; color: var(--primary); margin-bottom: 8px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; margin-top: 12px; }
+    th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border-color); }
+    th { background: var(--neutral-light); font-weight: 600; color: var(--text-primary); }
+
+
+    /* Visual refinement overrides requested by user */
+    :root {
+      --bg-main: #f7f9fc;
+      --border-color: #d9e4f2;
+      --primary: #1d4ed8;
+      --primary-hover: #1e40af;
+      --success: #1d4ed8;
+      --warning: #f4b400;
+      --neutral-light: #f8fbff;
+    }
+
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      min-width: 0;
+    }
+
+    .msf-logo {
+      height: 68px;
+      width: auto;
+      display: block;
+      flex: 0 0 auto;
+      object-fit: contain;
+    }
+
+    .kpi-card {
+      text-align: center;
+      background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    }
+
+    .kpi-title {
+      font-size: 0.96rem;
+      font-weight: 700;
+      text-align: center;
+      color: #334155;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .kpi-value {
+      font-size: 2.1rem;
+      text-align: center;
+    }
+
+    .kpi-subtext {
+      font-size: 0.82rem;
+      text-align: center;
+    }
+
+    .chart-card h3 {
+      color: #1e3a8a;
+    }
+
+    .findings-section {
+      border: 2px solid rgba(29, 78, 216, 0.14);
+      box-shadow: 0 12px 28px rgba(29, 78, 216, 0.08);
+      background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+    }
+
+    .findings-section .section-title {
+      font-size: 1.35rem;
+      margin-bottom: 18px;
+      color: #1e3a8a;
+    }
+
+    .findings-section .findings-list li {
+      font-size: 1.04rem;
+      line-height: 1.6;
+      padding: 16px 18px;
+      border-left-width: 6px;
+    }
+
+    .findings-section .findings-list li.strength {
+      background: rgba(29, 78, 216, 0.06);
+    }
+
+    .findings-section .findings-list li.warning {
+      background: rgba(244, 180, 0, 0.08);
+    }
+
+    @media (max-width: 900px) {
+      .header-brand {
+        width: 100%;
+      }
+
+      .msf-logo {
+        height: 58px;
+        width: auto;
+      }
+    }
+
+    @media print {
+      body { background: #fff; padding: 0; }
+      .filter-panel, .btn-actions { display: none; }
+      .chart-card, .kpi-card, .section-card { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-brand">
+      <img class="msf-logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAiwAAADrCAYAAABKBc3MAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyRpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYxIDY0LjE0MDk0OSwgMjAxMC8xMi8wNy0xMDo1NzowMSAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNS4xIE1hY2ludG9zaCIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDo1NEZFQzA4MjVBMDUxMUU1QTJCNEZDQjVFODA5OEMxNCIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDpCNUU4RTc5MjVBMDUxMUU1QTJCNEZDQjVFODA5OEMxNCI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ4bXAuaWlkOjU0RkVDMDgwNUEwNTExRTVBMkI0RkNCNUU4MDk4QzE0IiBzdFJlZjpkb2N1bWVudElEPSJ4bXAuZGlkOjU0RkVDMDgxNUEwNTExRTVBMkI0RkNCNUU4MDk4QzE0Ii8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8++LWLYAAAMclJREFUeNrsnd1x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" alt="Médecins Sans Frontières logo" title="Médecins Sans Frontières">
+      <div>
+        <h1>OCBA Tool Usability Dashboard</h1>
+        <p>Operational Performance & Adoption Analytics for MSF AI Assistant</p>
+        <div class="status-message" id="status-message">Dashboard ready. You can import an Excel file from the original summary template.</div>
+      </div>
+    </div>
+    <div class="header-meta">
+      <div>Source Worksheet: <span id="source-worksheet">OCBA Summary</span></div>
+      <div>Reporting Period: <span id="reporting-period">March – August</span></div>
+      <div>Generated: <span id="generated-date">-</span></div>
+    </div>
+  </header>
+
+  <div class="filter-panel">
+    <div class="filter-group">
+      <span class="filter-label">Filter Reporting Months:</span>
+      <div class="month-checkboxes" id="month-filters"></div>
+    </div>
+    <div class="btn-actions">
+      <button class="btn" id="reset-btn" type="button">Reset Filters</button>
+      <label class="btn" for="file-input" style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;">
+        <input type="file" id="file-input" accept=".xlsx,.xls" style="display:none" aria-hidden="true">
+        Import Excel
+      </label>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card" title="Latest cumulative total users in selected period">
+      <div class="kpi-title">Total Users (Accumulated)</div>
+      <div class="kpi-value" id="kpi-accum-users">-</div>
+      <div class="kpi-subtext" id="kpi-accum-users-sub">End of selected period</div>
+    </div>
+    <div class="kpi-card" title="Average unique active users per month across selected period">
+      <div class="kpi-title">Avg Monthly Active Users</div>
+      <div class="kpi-value" id="kpi-avg-active">-</div>
+      <div class="kpi-subtext" id="kpi-avg-active-sub">Total: -</div>
+    </div>
+    <div class="kpi-card" title="Total interaction queries recorded in selected period">
+      <div class="kpi-title">Total Interactions</div>
+      <div class="kpi-value" id="kpi-total-interactions">-</div>
+      <div class="kpi-subtext" id="kpi-total-interactions-sub">Avg - / month</div>
+    </div>
+    <div class="kpi-card" title="Average queries submitted per active user per month">
+      <div class="kpi-title">Interactions / User</div>
+      <div class="kpi-value" id="kpi-interactions-per-user">-</div>
+      <div class="kpi-subtext">Usage intensity index</div>
+    </div>
+    <div class="kpi-card" title="Average field operations vs HQ user proportion">
+      <div class="kpi-title">Avg HQ / Field Share</div>
+      <div class="kpi-value" id="kpi-hq-field">-</div>
+      <div class="kpi-subtext">HQ % vs Country Program %</div>
+    </div>
+    <div class="kpi-card" title="Average OCBA share of total MSF platform interactions">
+      <div class="kpi-title">Avg MSF Usage Share</div>
+      <div class="kpi-value" id="kpi-msf-usage">-</div>
+      <div class="kpi-subtext">Share of total MSF activity</div>
+    </div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="chart-card">
+      <h3>Monthly Interactions & Active Users Growth</h3>
+      <div class="chart-container"><canvas id="chart-interactions"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>User Base Location Distribution (HQ vs Field)</h3>
+      <div class="chart-container"><canvas id="chart-demographics"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>New User Acquisition per Month (HQ vs Field)</h3>
+      <div class="chart-container"><canvas id="chart-acquisition"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>OCBA Users/Usage Share vs Overall MSF Platform</h3>
+      <div class="chart-container"><canvas id="chart-msf-share"></canvas></div>
+    </div>
+  </div>
+
+  <div class="section-card findings-section">
+    <div class="section-title" id="findings-title">Key Operational Findings & Insights — Last Selected Month</div>
+    <ul class="findings-list" id="findings-container"></ul>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">Data Quality, Methodology & Limitations</div>
+    <details open>
+      <summary>Methodology & Calculation Rules</summary>
+      <p style="margin-bottom: 8px;">All data is sourced from the imported worksheet, prioritizing <strong>OCBA Summary</strong> when available. The importer now supports the original matrix layout used in the uploaded file.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Metric Identifier</th>
+            <th>Formula / Calculation Method</th>
+            <th>Original Source Definition</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Accumulated Users</strong></td>
+            <td>Latest selected month value in <code>Total Users (accumulated)</code></td>
+            <td>Cumulative number of users since the platform launched.</td>
+          </tr>
+          <tr>
+            <td><strong>Monthly Active Users</strong></td>
+            <td>Sum and arithmetic mean of selected <code>Unique Users/Month</code></td>
+            <td>Number of distinct users who accessed the platform during the month.</td>
+          </tr>
+          <tr>
+            <td><strong>Total Interactions</strong></td>
+            <td>Sum of selected <code>Interactions/Month</code></td>
+            <td>Total number of user interactions recorded during the month (1 interaction = 1 question).</td>
+          </tr>
+          <tr>
+            <td><strong>Interactions / User</strong></td>
+            <td>Total Interactions / Sum of Monthly Active Users</td>
+            <td>Derived measurement of engagement depth per user.</td>
+          </tr>
+          <tr>
+            <td><strong>HQ / Field Split</strong></td>
+            <td>Mean of <code>HQ Users (%)</code> and <code>Country Programs Users (%)</code></td>
+            <td>Percentages of users based at HQ vs field operations.</td>
+          </tr>
+        </tbody>
+      </table>
+    </details>
+    <details>
+      <summary>Data Limitations & Excluded Metrics</summary>
+      <p style="margin-top: 8px;">
+        * <strong>Omitted Usability Standard Metrics:</strong> Task completion rates, task duration/time-on-task, SUS scores, and error counts are not present in the source workbook.<br>
+        * <strong>Qualitative Feedback:</strong> No free-text feedback columns are imported by this dashboard.<br>
+        * <strong>Data Anonymization:</strong> The dashboard works with aggregated metrics only.
+      </p>
+    </details>
+  </div>
+
+  <script>
+    const defaultRawData = [
+      { month: 'March', accumUsers: 175, activeUsers: 175, interactions: 6296, hqPct: 99.4, fieldPct: 0.0, userSharePct: 7.9, usageSharePct: 6.6, acquisition: 175 },
+      { month: 'April', accumUsers: 216, activeUsers: 159, interactions: 6094, hqPct: 100.0, fieldPct: 0.0, userSharePct: 6.5, usageSharePct: 5.7, acquisition: 41 },
+      { month: 'May', accumUsers: 234, activeUsers: 198, interactions: 8239, hqPct: 90.4, fieldPct: 9.1, userSharePct: 7.4, usageSharePct: 6.9, acquisition: 18 },
+      { month: 'June', accumUsers: 261, activeUsers: 193, interactions: 9798, hqPct: 92.2, fieldPct: 7.3, userSharePct: 6.7, usageSharePct: 6.6, acquisition: 27 },
+      { month: 'July', accumUsers: 284, activeUsers: 220, interactions: 18725, hqPct: 93.2, fieldPct: 5.9, userSharePct: 6.7, usageSharePct: 7.1, acquisition: 23 },
+      { month: 'August', accumUsers: 335, activeUsers: 205, interactions: 13029, hqPct: 92.7, fieldPct: 6.3, userSharePct: 6.1, usageSharePct: 4.5, acquisition: 51 }
+    ];
+
+    const monthOrder = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+    let rawData = [...defaultRawData];
+    let activeMonths = rawData.map(d => d.month);
+    let sourceWorksheetName = 'OCBA Summary';
+
+    let chartInteractions, chartDemographics, chartAcquisition, chartMsfShare;
+
+    function normalizeMonth(value) {
+      if (value === null || value === undefined) return null;
+      const cleaned = String(value).replace(/\s+/g, ' ').trim().replace(/\.$/, '');
+      const lower = cleaned.toLowerCase();
+      const found = monthOrder.find(m => m.toLowerCase() === lower);
+      return found || null;
+    }
+
+    function toNum(value) {
+      if (value === null || value === undefined || value === '') return null;
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+      const parsed = Number(String(value).replace(/[%,$\s]/g, '').replace(/,/g, ''));
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    function mean(values) {
+      const valid = values.filter(v => typeof v === 'number' && Number.isFinite(v));
+      if (!valid.length) return null;
+      return valid.reduce((sum, v) => sum + v, 0) / valid.length;
+    }
+
+    function estimateAcquisitionSplit(record) {
+      const total = typeof record?.acquisition === 'number' && Number.isFinite(record.acquisition) ? record.acquisition : null;
+      if (total === null) return { hq: null, field: null };
+
+      const hqShare = typeof record?.hqPct === 'number' && Number.isFinite(record.hqPct) ? record.hqPct : null;
+      const fieldShare = typeof record?.fieldPct === 'number' && Number.isFinite(record.fieldPct) ? record.fieldPct : null;
+
+      if (hqShare === null && fieldShare === null) {
+        return { hq: total, field: null };
+      }
+
+      const totalShare = (hqShare || 0) + (fieldShare || 0);
+      if (!totalShare) {
+        return { hq: total, field: 0 };
+      }
+
+      const hq = total * ((hqShare || 0) / totalShare);
+      const field = total * ((fieldShare || 0) / totalShare);
+
+      return {
+        hq: Math.round(hq * 10) / 10,
+        field: Math.round(field * 10) / 10
+      };
+    }
+
+    function setStatus(message) {
+      const el = document.getElementById('status-message');
+      if (el) el.innerText = message;
+    }
+
+    function updateHeaderMeta() {
+      const sourceEl = document.getElementById('source-worksheet');
+      const periodEl = document.getElementById('reporting-period');
+      const generatedEl = document.getElementById('generated-date');
+
+      if (sourceEl) sourceEl.innerText = sourceWorksheetName || 'Unknown';
+      if (periodEl) {
+        const ordered = [...rawData].sort((a, b) => monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month));
+        periodEl.innerText = ordered.length ? `${ordered[0].month} – ${ordered[ordered.length - 1].month}` : 'N/A';
+      }
+      if (generatedEl) {
+        generatedEl.innerText = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+      }
+    }
+
+    function initCharts() {
+      const ctx1 = document.getElementById('chart-interactions').getContext('2d');
+      chartInteractions = new Chart(ctx1, {
+        type: 'bar',
+        data: { labels: [], datasets: [] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          scales: {
+            y: { type: 'linear', position: 'left', title: { display: true, text: 'Interactions' } },
+            y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Active Users' } }
+          }
+        }
+      });
+
+      const ctx2 = document.getElementById('chart-demographics').getContext('2d');
+      chartDemographics = new Chart(ctx2, {
+        type: 'bar',
+        data: { labels: [], datasets: [] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { stacked: true },
+            y: { stacked: true, max: 100, title: { display: true, text: 'Percentage (%)' } }
+          }
+        }
+      });
+
+      const ctx3 = document.getElementById('chart-acquisition').getContext('2d');
+      chartAcquisition = new Chart(ctx3, {
+        type: 'bar',
+        data: { labels: [], datasets: [] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          scales: {
+            x: { stacked: true },
+            y: { stacked: true, title: { display: true, text: 'Estimated New Users' } }
+          }
+        }
+      });
+
+      const ctx4 = document.getElementById('chart-msf-share').getContext('2d');
+      chartMsfShare = new Chart(ctx4, {
+        type: 'line',
+        data: { labels: [], datasets: [] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          scales: { y: { title: { display: true, text: 'Percentage of MSF Total (%)' } } }
+        }
+      });
+    }
+
+
+    function renderMonthButtons() {
+      const monthContainer = document.getElementById('month-filters');
+      monthContainer.innerHTML = '';
+
+      const ordered = [...rawData].sort((a, b) => monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month));
+      ordered.forEach(d => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'month-btn' + (activeMonths.includes(d.month) ? ' active' : '');
+        btn.setAttribute('data-month', d.month);
+        btn.innerText = d.month;
+        btn.addEventListener('click', () => {
+          const month = d.month;
+          if (activeMonths.includes(month)) {
+            if (activeMonths.length > 1) {
+              activeMonths = activeMonths.filter(m => m !== month);
+            }
+          } else {
+            activeMonths.push(month);
+            activeMonths = ordered.map(x => x.month).filter(m => activeMonths.includes(m));
+          }
+          renderMonthButtons();
+          updateDashboard();
+        });
+        monthContainer.appendChild(btn);
+      });
+    }
+
+    function clearDashboardForNoData() {
+      document.getElementById('kpi-accum-users').innerText = 'N/A';
+      document.getElementById('kpi-avg-active').innerText = 'N/A';
+      document.getElementById('kpi-total-interactions').innerText = 'N/A';
+      document.getElementById('kpi-interactions-per-user').innerText = 'N/A';
+      document.getElementById('kpi-hq-field').innerText = 'N/A';
+      document.getElementById('kpi-msf-usage').innerText = 'N/A';
+      document.getElementById('kpi-accum-users-sub').innerText = 'No selected period';
+      document.getElementById('kpi-avg-active-sub').innerText = 'Total Month Sum: N/A';
+      document.getElementById('kpi-total-interactions-sub').innerText = 'Avg N/A / mo';
+      const findingsTitle = document.getElementById('findings-title');
+      if (findingsTitle) findingsTitle.innerText = 'Key Operational Findings & Insights — Last Selected Month';
+      document.getElementById('findings-container').innerHTML = '<li class="warning">No data available for the selected filters. Please select at least one month.</li>';
+
+      chartInteractions.data = { labels: [], datasets: [] };
+      chartDemographics.data = { labels: [], datasets: [] };
+      chartAcquisition.data = { labels: [], datasets: [] };
+      chartMsfShare.data = { labels: [], datasets: [] };
+
+      chartInteractions.update();
+      chartDemographics.update();
+      chartAcquisition.update();
+      chartMsfShare.update();
+    }
+
+
+    function updateDashboard() {
+      const filtered = rawData
+        .filter(d => activeMonths.includes(d.month))
+        .sort((a, b) => monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month));
+
+      if (!filtered.length) {
+        clearDashboardForNoData();
+        return;
+      }
+
+      const latestAccum = filtered[filtered.length - 1].accumUsers;
+      const sumActive = filtered.reduce((acc, d) => acc + (d.activeUsers || 0), 0);
+      const avgActive = filtered.length ? Math.round(sumActive / filtered.length) : null;
+      const totalInteractions = filtered.reduce((acc, d) => acc + (d.interactions || 0), 0);
+      const avgInteractions = filtered.length ? Math.round(totalInteractions / filtered.length) : null;
+      const interactionsPerUser = sumActive ? (totalInteractions / sumActive).toFixed(1) : 'N/A';
+      const avgHq = mean(filtered.map(d => d.hqPct));
+      const avgField = mean(filtered.map(d => d.fieldPct));
+      const avgMsfUsage = mean(filtered.map(d => d.usageSharePct));
+
+      document.getElementById('kpi-accum-users').innerText = latestAccum !== null ? latestAccum.toLocaleString() : 'N/A';
+      document.getElementById('kpi-accum-users-sub').innerText = `As of ${filtered[filtered.length - 1].month}`;
+
+      document.getElementById('kpi-avg-active').innerText = avgActive !== null ? avgActive.toLocaleString() : 'N/A';
+      document.getElementById('kpi-avg-active-sub').innerText = `Total Month Sum: ${sumActive.toLocaleString()}`;
+
+      document.getElementById('kpi-total-interactions').innerText = totalInteractions.toLocaleString();
+      document.getElementById('kpi-total-interactions-sub').innerText = `Avg ${avgInteractions.toLocaleString()} / mo`;
+
+      document.getElementById('kpi-interactions-per-user').innerText = interactionsPerUser;
+      document.getElementById('kpi-hq-field').innerText = `${avgHq !== null ? avgHq.toFixed(1) : 'N/A'}% / ${avgField !== null ? avgField.toFixed(1) : 'N/A'}%`;
+      document.getElementById('kpi-msf-usage').innerText = `${avgMsfUsage !== null ? avgMsfUsage.toFixed(1) : 'N/A'}%`;
+
+      const labels = filtered.map(d => d.month);
+
+      chartInteractions.data = {
+        labels,
+        datasets: [
+          {
+            type: 'bar',
+            label: 'Interactions',
+            data: filtered.map(d => d.interactions),
+            backgroundColor: 'rgba(29, 78, 216, 0.34)',
+            borderColor: '#1d4ed8',
+            borderWidth: 1.5,
+            maxBarThickness: 42,
+            yAxisID: 'y',
+            order: 2
+          },
+          {
+            type: 'line',
+            label: 'Active Users',
+            data: filtered.map(d => d.activeUsers),
+            borderColor: '#f4b400',
+            backgroundColor: '#f4b400',
+            pointBackgroundColor: '#f4b400',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2,
+            pointRadius: 4,
+            pointHoverRadius: 5,
+            borderWidth: 3,
+            yAxisID: 'y1',
+            tension: 0.25,
+            order: 1
+          }
+        ]
+      };
+      chartInteractions.update();
+
+      chartDemographics.data = {
+        labels,
+        datasets: [
+          { label: 'HQ Users (%)', data: filtered.map(d => d.hqPct), backgroundColor: '#1d4ed8' },
+          { label: 'Country Programs (%)', data: filtered.map(d => d.fieldPct), backgroundColor: '#f4b400' }
+        ]
+      };
+      chartDemographics.update();
+
+      const acquisitionSplit = filtered.map(estimateAcquisitionSplit);
+      chartAcquisition.data = {
+        labels,
+        datasets: [
+          {
+            label: 'HQ New Users (est.)',
+            data: acquisitionSplit.map(d => d.hq),
+            backgroundColor: 'rgba(29, 78, 216, 0.86)',
+            borderColor: '#1d4ed8',
+            borderWidth: 1,
+            maxBarThickness: 42
+          },
+          {
+            label: 'Field New Users (est.)',
+            data: acquisitionSplit.map(d => d.field),
+            backgroundColor: 'rgba(244, 180, 0, 0.88)',
+            borderColor: '#f4b400',
+            borderWidth: 1,
+            maxBarThickness: 42
+          }
+        ]
+      };
+      chartAcquisition.update();
+
+      chartMsfShare.data = {
+        labels,
+        datasets: [
+          {
+            label: 'OCBA Users Share (%)',
+            data: filtered.map(d => d.userSharePct),
+            borderColor: '#1d4ed8',
+            backgroundColor: '#1d4ed8',
+            pointBackgroundColor: '#1d4ed8',
+            borderWidth: 3,
+            tension: 0.25
+          },
+          {
+            label: 'OCBA Usage Share (%)',
+            data: filtered.map(d => d.usageSharePct),
+            borderColor: '#f4b400',
+            backgroundColor: '#f4b400',
+            pointBackgroundColor: '#f4b400',
+            borderWidth: 3,
+            tension: 0.25
+          }
+        ]
+      };
+      chartMsfShare.update();
+
+      const last = filtered[filtered.length - 1];
+      const previous = filtered.length > 1 ? filtered[filtered.length - 2] : null;
+      const lastMonthInteractions = last.interactions ?? null;
+      const lastMonthActiveUsers = last.activeUsers ?? null;
+      const lastMonthIntensity = lastMonthInteractions && lastMonthActiveUsers ? (lastMonthInteractions / lastMonthActiveUsers).toFixed(1) : 'N/A';
+      const lastInteractionDelta = previous && previous.interactions ? (((last.interactions - previous.interactions) / previous.interactions) * 100).toFixed(1) : null;
+      const lastAcquisition = estimateAcquisitionSplit(last);
+
+      const findingsTitle = document.getElementById('findings-title');
+      if (findingsTitle) findingsTitle.innerText = `Key Operational Findings & Insights — ${last.month}`;
+
+      const findingsContainer = document.getElementById('findings-container');
+      findingsContainer.innerHTML = `
+        <li class="strength"><strong>Latest Month Snapshot:</strong> In <strong>${last.month}</strong>, the dashboard recorded <strong>${lastMonthInteractions !== null ? lastMonthInteractions.toLocaleString() : 'N/A'}</strong> interactions from <strong>${lastMonthActiveUsers !== null ? lastMonthActiveUsers.toLocaleString() : 'N/A'}</strong> active users${lastInteractionDelta !== null ? `, a <strong>${lastInteractionDelta}%</strong> change vs the previous month in interactions.` : '.'}</li>
+        <li class="strength"><strong>Usage Intensity:</strong> During <strong>${last.month}</strong>, each active user generated an average of <strong>${lastMonthIntensity}</strong> queries.</li>
+        <li class="warning"><strong>HQ / Field Mix:</strong> For <strong>${last.month}</strong>, HQ users represented <strong>${last.hqPct !== null && last.hqPct !== undefined ? last.hqPct.toFixed(1) : 'N/A'}%</strong> of the user base, while Country Programs represented <strong>${last.fieldPct !== null && last.fieldPct !== undefined ? last.fieldPct.toFixed(1) : 'N/A'}%</strong>.</li>
+        <li><strong>MSF Platform Footprint:</strong> In <strong>${last.month}</strong>, OCBA represented <strong>${last.userSharePct !== null && last.userSharePct !== undefined ? last.userSharePct.toFixed(1) : 'N/A'}%</strong> of users and <strong>${last.usageSharePct !== null && last.usageSharePct !== undefined ? last.usageSharePct.toFixed(1) : 'N/A'}%</strong> of usage across the overall MSF platform.</li>
+        <li><strong>New User Acquisition:</strong> The chart differentiates <strong>estimated</strong> HQ and Field acquisition for <strong>${last.month}</strong> using the monthly HQ/Field user-share data, equivalent to roughly <strong>${lastAcquisition.hq !== null ? lastAcquisition.hq.toLocaleString() : 'N/A'}</strong> HQ new users and <strong>${lastAcquisition.field !== null ? lastAcquisition.field.toLocaleString() : 'N/A'}</strong> Field new users.</li>
+      `;
+    }
+
+
+    function detectMonthColumns(row) {
+      const monthCols = [];
+      row.forEach((value, index) => {
+        const month = normalizeMonth(value);
+        if (month) monthCols.push({ month, index });
+      });
+      return monthCols;
+    }
+
+    function extractMetricLabel(row) {
+      for (let i = 0; i < Math.min(row.length, 4); i++) {
+        const value = row[i];
+        if (typeof value === 'string' && value.trim()) {
+          const trimmed = value.trim();
+          if (!normalizeMonth(trimmed)) return trimmed;
+        }
+      }
+      return null;
+    }
+
+    function parseSummaryMatrixWorksheet(ws) {
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false });
+      if (!rows || !rows.length) return [];
+
+      const monthRowIndex = rows.findIndex(row => detectMonthColumns(row).length >= 2);
+      if (monthRowIndex === -1) return [];
+
+      const monthCols = detectMonthColumns(rows[monthRowIndex]);
+      if (!monthCols.length) return [];
+
+      const metricMap = {
+        'total users (accumulated)': 'accumUsers',
+        'unique users/month': 'activeUsers',
+        'interactions/month': 'interactions',
+        'hq users (%)': 'hqPct',
+        'country programs users (%)': 'fieldPct',
+        'country program users (%)': 'fieldPct',
+        'share ocba users vs all msf (%)': 'userSharePct',
+        'share ocba usage vs all msf (%)': 'usageSharePct',
+        'user acquisition/month': 'acquisition'
+      };
+
+      const result = monthCols.map(item => ({ month: item.month }));
+
+      rows.slice(monthRowIndex + 1).forEach(row => {
+        const label = extractMetricLabel(row);
+        if (!label) return;
+        const key = metricMap[label.toLowerCase().trim()];
+        if (!key) return;
+
+        const numericValues = monthCols.map(item => toNum(row[item.index]));
+        const hasAnyNumericValue = numericValues.some(value => value !== null);
+        if (!hasAnyNumericValue) return;
+
+        monthCols.forEach((item, idx) => {
+          result[idx][key] = numericValues[idx];
+        });
+      });
+
+      return result.filter(record =>
+        record.month &&
+        ['accumUsers', 'activeUsers', 'interactions', 'hqPct', 'fieldPct', 'userSharePct', 'usageSharePct', 'acquisition']
+          .some(key => record[key] !== null && record[key] !== undefined)
+      );
+    }
+
+    function findKey(row, patterns) {
+      const keys = Object.keys(row || {});
+      const lowKeys = keys.map(k => k.toLowerCase());
+      for (const pattern of patterns) {
+        const index = lowKeys.findIndex(k => k.includes(pattern));
+        if (index !== -1) return keys[index];
+      }
+      return null;
+    }
+
+    function parseTabularWorksheet(ws) {
+      const json = XLSX.utils.sheet_to_json(ws, { defval: null, raw: false });
+      if (!json || !json.length) return [];
+
+      const mapped = [];
+      json.forEach(row => {
+        const monthKey = findKey(row, ['month', 'reporting period', 'period']);
+        const accumKey = findKey(row, ['total users', 'accumulated', 'accum']);
+        const activeKey = findKey(row, ['unique users', 'active users', 'unique users/month', 'unique users per month']);
+        const interactionsKey = findKey(row, ['interaction', 'queries']);
+        const hqKey = findKey(row, ['hq users', 'hq %', 'hq']);
+        const fieldKey = findKey(row, ['country programs users', 'country program users', 'field', 'country programs']);
+        const userShareKey = findKey(row, ['share ocba users', 'user share']);
+        const usageShareKey = findKey(row, ['share ocba usage', 'usage share']);
+        const acquisitionKey = findKey(row, ['acquisition', 'new user', 'user acquisition']);
+
+        const month = normalizeMonth(monthKey ? row[monthKey] : null);
+        if (!month) return;
+
+        mapped.push({
+          month,
+          accumUsers: toNum(accumKey ? row[accumKey] : null),
+          activeUsers: toNum(activeKey ? row[activeKey] : null),
+          interactions: toNum(interactionsKey ? row[interactionsKey] : null),
+          hqPct: toNum(hqKey ? row[hqKey] : null),
+          fieldPct: toNum(fieldKey ? row[fieldKey] : null),
+          userSharePct: toNum(userShareKey ? row[userShareKey] : null),
+          usageSharePct: toNum(usageShareKey ? row[usageShareKey] : null),
+          acquisition: toNum(acquisitionKey ? row[acquisitionKey] : null)
+        });
+      });
+
+      return mapped.filter(record =>
+        record.month && (record.accumUsers !== null || record.activeUsers !== null || record.interactions !== null)
+      );
+    }
+
+    function sanitizeRecords(records) {
+      const deduped = new Map();
+      records.forEach(record => {
+        if (!record || !record.month) return;
+        deduped.set(record.month, {
+          month: record.month,
+          accumUsers: record.accumUsers ?? null,
+          activeUsers: record.activeUsers ?? null,
+          interactions: record.interactions ?? null,
+          hqPct: record.hqPct ?? null,
+          fieldPct: record.fieldPct ?? null,
+          userSharePct: record.userSharePct ?? null,
+          usageSharePct: record.usageSharePct ?? null,
+          acquisition: record.acquisition ?? null
+        });
+      });
+
+      return [...deduped.values()].sort((a, b) => monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month));
+    }
+
+    function parseWorkbook(workbook) {
+      const preferredSheets = ['OCBA Summary', 'Sheet 1', workbook.SheetNames[0]].filter(Boolean);
+      const tried = [];
+
+      for (const sheetName of preferredSheets) {
+        if (!workbook.Sheets[sheetName] || tried.includes(sheetName)) continue;
+        tried.push(sheetName);
+
+        const ws = workbook.Sheets[sheetName];
+        let parsed = sanitizeRecords(parseSummaryMatrixWorksheet(ws));
+        if (parsed.length) return { sheetName, records: parsed };
+
+        parsed = sanitizeRecords(parseTabularWorksheet(ws));
+        if (parsed.length) return { sheetName, records: parsed };
+      }
+
+      for (const sheetName of workbook.SheetNames) {
+        if (tried.includes(sheetName)) continue;
+        const ws = workbook.Sheets[sheetName];
+
+        let parsed = sanitizeRecords(parseSummaryMatrixWorksheet(ws));
+        if (parsed.length) return { sheetName, records: parsed };
+
+        parsed = sanitizeRecords(parseTabularWorksheet(ws));
+        if (parsed.length) return { sheetName, records: parsed };
+      }
+
+      return { sheetName: null, records: [] };
+    }
+
+    const sheetJsCdn = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+
+    function loadSheetJs(callback) {
+      if (window.XLSX) return callback();
+      const script = document.createElement('script');
+      script.src = sheetJsCdn;
+      script.onload = callback;
+      script.onerror = () => alert('Failed to load SheetJS. Please check your connection and try again.');
+      document.head.appendChild(script);
+    }
+
+    document.getElementById('reset-btn').addEventListener('click', () => {
+      activeMonths = rawData.map(d => d.month);
+      renderMonthButtons();
+      updateDashboard();
+      setStatus('Filters reset.');
+    });
+
+    document.getElementById('file-input').addEventListener('change', event => {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      loadSheetJs(() => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const parsed = parseWorkbook(workbook);
+
+            if (!parsed.records.length) {
+              alert('No valid monthly summary data was found. The importer now supports matrix and tabular layouts, but this file did not match either expected structure.');
+              setStatus('Import failed: no compatible summary structure found.');
+              return;
+            }
+
+            rawData = parsed.records;
+            activeMonths = rawData.map(d => d.month);
+            sourceWorksheetName = parsed.sheetName || 'Imported worksheet';
+
+            updateHeaderMeta();
+            renderMonthButtons();
+            updateDashboard();
+            setStatus(`Import successful: ${rawData.length} month(s) loaded from "${sourceWorksheetName}".`);
+            alert(`Import successful: ${rawData.length} month(s) loaded from "${sourceWorksheetName}".`);
+          } catch (error) {
+            console.error(error);
+            alert('Failed to parse the Excel file. See console for details.');
+            setStatus('Import failed: the file could not be parsed.');
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      });
+
+      event.target.value = '';
+    });
+
+    window.onload = () => {
+      updateHeaderMeta();
+      renderMonthButtons();
+      initCharts();
+      updateDashboard();
+    };
+  </script>
+</body>
+</html>
